@@ -1,39 +1,28 @@
-FROM node:22-alpine AS base
+# Dockerfile simple para Atlas Hub - evitar multi-stage por ahora (diagnóstico)
+FROM node:22-alpine
 
-# Install dependencies only when needed
-FROM base AS deps
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
+
+# Copiar package files
 COPY package.json package-lock.json* ./
-RUN npm ci
 
-# Rebuild the source code only when needed
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Instalar deps
+RUN npm ci --prefer-offline || npm install
+
+# Copiar código
 COPY . .
-ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
 
-# Production image, copy all the files and run next
-FROM base AS runner
-WORKDIR /app
-
+# Variables de entorno
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Build Next.js
+RUN npm run build
 
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-USER nextjs
-
+# Exponer puerto
 EXPOSE 3000
 
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
-
-CMD ["node", "server.js"]
+# Comando de inicio
+CMD ["npm", "start"]
