@@ -1,0 +1,64 @@
+{
+  "AtlasHub": {
+    "title": "Atlas Hub",
+    "tagline": "The Hub where your AI creates, organizes, and delivers"
+  },
+  "Nav": {
+    "home": "Home",
+    "projects": "Projects",
+    "files": "Files",
+    "tasks": "Tasks",
+    "agent": "AI Agent",
+    "metrics": "Metrics",
+    "settings": "Settings"
+  },
+  "Home": {
+    "activeProjects": "Active Projects",
+    "recentActivity": "Recent Activity",
+    "chatWithAgent": "Chat with Hermes",
+    "noProjects": "No projects yet. Create your first one.",
+    "newProject": "New Project",
+    "viewAll": "View all"
+  },
+  "ProjectCard": {
+    "progress": "Progress",
+    "files": "files",
+    "tasks": "tasks",
+    "active": "Active",
+    "paused": "Paused",
+    "completed": "Completed"
+  },
+  "ActivityFeed": {
+    "generated": "generated",
+    "completedTask": "completed task",
+    "uploadedFile": "uploaded file",
+    "sentMessage": "sent message",
+    "ago": "ago",
+    "minutes": "min",
+    "hours": "hours",
+    "days": "days",
+    "justNow": "just now"
+  },
+  "Auth": {
+    "login": "Sign In",
+    "logout": "Sign Out",
+    "email": "Email",
+    "password": "Password",
+    "loginButton": "Sign In",
+    "magicLink": "Send magic link",
+    "welcomeBack": "Welcome back"
+  },
+  "Common": {
+    "search": "Search...",
+    "searchPlaceholder": "Search projects, files, tasks... (Cmd+K)",
+    "notifications": "Notifications",
+    "profile": "Profile",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "close": "Close"
+  }
+}

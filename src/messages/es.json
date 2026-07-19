@@ -1,0 +1,64 @@
+{
+  "AtlasHub": {
+    "title": "Atlas Hub",
+    "tagline": "El Hub donde tu IA crea, organiza y entrega"
+  },
+  "Nav": {
+    "home": "Inicio",
+    "projects": "Proyectos",
+    "files": "Archivos",
+    "tasks": "Tareas",
+    "agent": "Agente IA",
+    "metrics": "Métricas",
+    "settings": "Configuración"
+  },
+  "Home": {
+    "activeProjects": "Proyectos Activos",
+    "recentActivity": "Actividad Reciente",
+    "chatWithAgent": "Chat con Hermes",
+    "noProjects": "Aún no hay proyectos. Crea el primero.",
+    "newProject": "Nuevo Proyecto",
+    "viewAll": "Ver todo"
+  },
+  "ProjectCard": {
+    "progress": "Progreso",
+    "files": "archivos",
+    "tasks": "tareas",
+    "active": "Activo",
+    "paused": "Pausado",
+    "completed": "Completado"
+  },
+  "ActivityFeed": {
+    "generated": "generó",
+    "completedTask": "completó tarea",
+    "uploadedFile": "subió archivo",
+    "sentMessage": "envió mensaje",
+    "ago": "hace",
+    "minutes": "min",
+    "hours": "horas",
+    "days": "días",
+    "justNow": "justo ahora"
+  },
+  "Auth": {
+    "login": "Iniciar Sesión",
+    "logout": "Cerrar Sesión",
+    "email": "Correo",
+    "password": "Contraseña",
+    "loginButton": "Entrar",
+    "magicLink": "Enviar enlace mágico",
+    "welcomeBack": "Bienvenido de vuelta"
+  },
+  "Common": {
+    "search": "Buscar...",
+    "searchPlaceholder": "Buscar proyectos, archivos, tareas... (Cmd+K)",
+    "notifications": "Notificaciones",
+    "profile": "Perfil",
+    "loading": "Cargando...",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "close": "Cerrar"
+  }
+}
