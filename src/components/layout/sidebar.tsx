@@ -2,22 +2,28 @@
 
 import { Home, FolderKanban, FileText, CheckSquare, Bot, BarChart3, Settings, Plus } from "lucide-react";
 
+// Slugs en español — el locale se prependa al href en runtime
 const navItems = [
   { key: "home", icon: Home, href: "/" },
-  { key: "projects", icon: FolderKanban, href: "/projects" },
-  { key: "files", icon: FileText, href: "/files" },
-  { key: "tasks", icon: CheckSquare, href: "/tasks" },
-  { key: "agent", icon: Bot, href: "/agent" },
-  { key: "metrics", icon: BarChart3, href: "/metrics" },
-  { key: "settings", icon: Settings, href: "/settings" },
+  { key: "projects", icon: FolderKanban, href: "/proyectos" },
+  { key: "files", icon: FileText, href: "/archivos" },
+  { key: "tasks", icon: CheckSquare, href: "/tareas" },
+  { key: "agent", icon: Bot, href: "/agente" },
+  { key: "metrics", icon: BarChart3, href: "/metricas" },
+  { key: "settings", icon: Settings, href: "/configuracion" },
 ] as const;
 
 interface SidebarProps {
   t: (key: string) => string;
   activeRoute: string;
+  locale: string;
 }
 
-export function Sidebar({ t, activeRoute }: SidebarProps) {
+export function Sidebar({ t, activeRoute, locale }: SidebarProps) {
+  // Construye el href con prefijo de locale: "/" -> "/es", "/proyectos" -> "/es/proyectos"
+  const buildHref = (href: string) =>
+    href === "/" ? `/${locale}` : `/${locale}${href}`;
+
   return (
     <aside className="hidden md:flex flex-col w-60 h-screen border-r border-app bg-app sticky top-0">
       {/* Logo */}
@@ -38,7 +44,7 @@ export function Sidebar({ t, activeRoute }: SidebarProps) {
           return (
             <a
               key={item.key}
-              href={item.href}
+              href={buildHref(item.href)}
               className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                 isActive
                   ? "bg-accent-indigo/10 text-accent-indigo"

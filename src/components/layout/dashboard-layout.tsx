@@ -30,7 +30,7 @@ export function DashboardLayout({
 
   return (
     <div className="flex h-screen bg-app">
-      <Sidebar t={t} activeRoute={activeRoute} />
+      <Sidebar t={t} activeRoute={activeRoute} locale={locale} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Topbar t={t} locale={locale} onLocaleToggle={handleLocaleToggle} />
         <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
