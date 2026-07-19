@@ -6,6 +6,9 @@ import { ProjectCard } from "@/components/dashboard/project-card/project-card";
 import { ActivityFeed } from "@/components/dashboard/activity-feed/activity-feed";
 import { AgentChat } from "@/components/dashboard/agent-chat";
 
+// Force dynamic rendering to avoid next-intl static generation issues
+export const dynamic = "force-dynamic";
+
 // Mock data — will be replaced by Supabase queries
 const mockProjects = [
   {
