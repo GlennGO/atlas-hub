@@ -2,8 +2,10 @@
 
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
+import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { ActivityFeed } from "@/components/dashboard/activity-feed/activity-feed";
+import { FilePreviewModal, FilePreviewData } from "@/components/dashboard/file-preview-modal/file-preview-modal";
 import {
   ArrowLeft,
   FileText,
@@ -69,6 +71,7 @@ export default function ProjectDetailPage() {
   const t = useTranslations();
   const params = useParams();
   const projectId = params.id as string;
+  const [previewFile, setPreviewFile] = useState<FilePreviewData | null>(null);
 
   const completedTasks = project.tasks.filter((task) => task.status === "done").length;
   const totalTasks = project.tasks.length;
@@ -153,12 +156,23 @@ export default function ProjectDetailPage() {
               {project.files.map((file) => {
                 const Icon = fileTypeIcons[file.type as keyof typeof fileTypeIcons] || FileText;
                 return (
-                  <div
+                  <button
                     key={file.name}
-                    className="flex items-center gap-3 p-3 bg-card border border-app rounded-lg hover:border-accent-indigo/30 transition-colors cursor-pointer group"
+                    onClick={() =>
+                      setPreviewFile({
+                        name: file.name,
+                        type: file.type as FilePreviewData["type"],
+                        size: file.size,
+                        createdAt: file.createdAt,
+                        mimeType: file.type === "document" ? "text/markdown" : undefined,
+                        url: undefined, // se conectará a Supabase Storage cuando esté listo
+                        content: undefined,
+                      })
+                    }
+                    className="w-full flex items-center gap-3 p-3 bg-card border border-app rounded-lg hover:border-accent-indigo/30 transition-colors cursor-pointer group text-left"
                   >
                     <div className="w-8 h-8 rounded-md bg-hover flex items-center justify-center">
-                      <Icon className="w-4 h-4 text-tertiary" />
+                      <Icon className="w-4 h-4 text-tertiary group-hover:text-accent-indigo transition-colors" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-primary truncate group-hover:text-accent-indigo transition-colors">
@@ -168,7 +182,7 @@ export default function ProjectDetailPage() {
                         {file.size} · {file.createdAt}
                       </p>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -232,6 +246,12 @@ export default function ProjectDetailPage() {
           <ActivityFeed t={t} />
         </section>
       </div>
+
+      <FilePreviewModal
+        file={previewFile}
+        open={previewFile !== null}
+        onClose={() => setPreviewFile(null)}
+      />
     </DashboardLayout>
   );
 }
