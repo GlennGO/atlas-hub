@@ -12,11 +12,15 @@ RUN if [ -f package-lock.json ]; then npm ci --prefer-offline; else npm install 
 # Copiar código
 COPY . .
 
-# Variables de entorno
+# Variables de entorno (build-time para NEXT_PUBLIC_*)
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 # Build Next.js
 RUN npm run build
