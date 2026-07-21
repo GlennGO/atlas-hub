@@ -38,7 +38,11 @@
     "minutes": "min",
     "hours": "hours",
     "days": "days",
-    "justNow": "just now"
+    "justNow": "just now",
+    "taskCreated": "created task",
+    "projectCreated": "created project",
+    "noActivity": "No recent activity",
+    "loadError": "Could not load activity"
   },
   "Projects": {
     "title": "Projects",
@@ -96,7 +100,11 @@
     "filesOverTime": "Files Generated (30 days)",
     "projectDistribution": "Distribution by Project",
     "thisWeek": "This week",
-    "lastWeek": "Last week"
+    "lastWeek": "Last week",
+    "noActivityWeek": "No activity in the last 7 days",
+    "noDistribution": "No projects with tasks",
+    "noFiles": "No files in the last 30 days",
+    "loadError": "Could not load metrics"
   },
   "Settings": {
     "title": "Settings",

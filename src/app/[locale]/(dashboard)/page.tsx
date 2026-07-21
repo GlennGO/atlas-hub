@@ -7,6 +7,7 @@ import { ActivityFeed } from "@/components/dashboard/activity-feed/activity-feed
 import { AgentChat } from "@/components/dashboard/agent-chat";
 import { FolderKanban, FileText, CheckSquare, TrendingUp } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,8 @@ interface ActivityEvent {
 
 export default function HomePage() {
   const t = useTranslations();
+  const params = useParams();
+  const locale = (params?.locale as string) || "es";
   const [projects, setProjects] = useState<Project[]>([]);
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,7 +81,7 @@ export default function HomePage() {
   ];
 
   return (
-    <DashboardLayout activeRoute="/" locale="es" t={t}>
+    <DashboardLayout activeRoute="/" locale={locale} t={t}>
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div>

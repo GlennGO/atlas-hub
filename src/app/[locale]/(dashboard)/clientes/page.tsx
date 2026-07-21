@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Plus, Building2, Mail, Phone, X, Loader2 } from "lucide-react";
+import { useParams } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,8 @@ interface Client {
 
 export default function ClientsPage() {
   const t = useTranslations();
+  const params = useParams();
+  const locale = (params?.locale as string) || "es";
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -83,7 +86,7 @@ export default function ClientsPage() {
   }
 
   return (
-    <DashboardLayout activeRoute="/clientes" locale="es" t={t}>
+    <DashboardLayout activeRoute="/clientes" locale={locale} t={t}>
       <div className="max-w-5xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">

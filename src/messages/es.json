@@ -38,7 +38,11 @@
     "minutes": "min",
     "hours": "horas",
     "days": "días",
-    "justNow": "justo ahora"
+    "justNow": "justo ahora",
+    "taskCreated": "creó tarea",
+    "projectCreated": "creó proyecto",
+    "noActivity": "Sin actividad reciente",
+    "loadError": "No se pudo cargar la actividad"
   },
   "Projects": {
     "title": "Proyectos",
@@ -96,7 +100,11 @@
     "filesOverTime": "Archivos Generados (30 días)",
     "projectDistribution": "Distribución por Proyecto",
     "thisWeek": "Esta semana",
-    "lastWeek": "Semana pasada"
+    "lastWeek": "Semana pasada",
+    "noActivityWeek": "No hay actividad en los últimos 7 días",
+    "noDistribution": "Sin proyectos con tareas",
+    "noFiles": "Sin archivos en los últimos 30 días",
+    "loadError": "No se pudieron cargar las métricas"
   },
   "Settings": {
     "title": "Configuración",

@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { createServerSupabase } from "@/lib/supabase/server";
 
 const GLENNGO_TENANT_ID = "00000000-0000-0000-0000-000000000001";
 
 // GET /api/projects → listar proyectos
 // GET /api/projects?id=xxx → obtener uno específico
 export async function GET(request: NextRequest) {
+  const supabase = await createServerSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const projectId = searchParams.get("id");
 
@@ -76,6 +83,12 @@ export async function GET(request: NextRequest) {
 // POST /api/projects → crear proyecto nuevo
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createServerSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { name, client, description, color } = body;
 
@@ -143,6 +156,12 @@ export async function POST(request: NextRequest) {
 // PATCH /api/projects → actualizar
 export async function PATCH(request: NextRequest) {
   try {
+    const supabase = await createServerSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { id, ...updates } = body;
 

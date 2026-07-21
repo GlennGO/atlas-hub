@@ -6,6 +6,7 @@ import { ProjectCard } from "@/components/dashboard/project-card/project-card";
 import { NewProjectModal } from "@/components/dashboard/new-project-modal/new-project-modal";
 import { useState, useEffect } from "react";
 import { Plus, FolderKanban } from "lucide-react";
+import { useParams } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,8 @@ type FilterType = "all" | "active" | "paused" | "completed";
 
 export default function ProjectsPage() {
   const t = useTranslations();
+  const params = useParams();
+  const locale = (params?.locale as string) || "es";
   const [filter, setFilter] = useState<FilterType>("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -67,7 +70,7 @@ export default function ProjectsPage() {
   ];
 
   return (
-    <DashboardLayout activeRoute="/proyectos" locale="es" t={t}>
+    <DashboardLayout activeRoute="/proyectos" locale={locale} t={t}>
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header + New button */}
         <div className="flex items-start justify-between">
@@ -163,7 +166,7 @@ export default function ProjectsPage() {
       <NewProjectModal
         open={modalOpen}
         onClose={handleModalClose}
-        locale="es"
+        locale={locale}
         t={t}
       />
     </DashboardLayout>

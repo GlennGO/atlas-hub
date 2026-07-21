@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Building2, Mail, Phone, FileText, FolderKanban, ArrowLeft, Loader2, Save, Check } from "lucide-react";
+import { useParams } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,8 @@ interface Project {
 
 export default function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const t = useTranslations();
+  const params = useParams();
+  const locale = (params?.locale as string) || "es";
   const [clientId, setClientId] = useState("");
   const [client, setClient] = useState<Client | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -93,7 +96,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
 
   if (loading) {
     return (
-      <DashboardLayout activeRoute="/clientes" locale="es" t={t}>
+      <DashboardLayout activeRoute="/clientes" locale={locale} t={t}>
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-6 h-6 text-tertiary animate-spin" />
         </div>
@@ -103,7 +106,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
 
   if (!client) {
     return (
-      <DashboardLayout activeRoute="/clientes" locale="es" t={t}>
+      <DashboardLayout activeRoute="/clientes" locale={locale} t={t}>
         <div className="max-w-3xl mx-auto text-center py-20">
           <p className="text-sm text-tertiary">Cliente no encontrado</p>
           <a href="/es/clientes" className="text-sm text-accent-indigo hover:underline mt-2 inline-block">
@@ -122,7 +125,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   };
 
   return (
-    <DashboardLayout activeRoute="/clientes" locale="es" t={t}>
+    <DashboardLayout activeRoute="/clientes" locale={locale} t={t}>
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Back */}
         <a href="/es/clientes" className="inline-flex items-center gap-1.5 text-sm text-tertiary hover:text-primary transition-colors">

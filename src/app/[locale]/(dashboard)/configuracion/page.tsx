@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { useState, useEffect } from "react";
 import { User, Bell, Palette, Plug, Check, Building2, Loader2 } from "lucide-react";
+import { useParams } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 // Toggle switch reutilizable
@@ -37,6 +38,8 @@ function SettingSection({ icon: Icon, title, children }: { icon: typeof User; ti
 
 export default function SettingsPage() {
   const t = useTranslations();
+  const params = useParams();
+  const locale = (params?.locale as string) || "es";
   const [emailNotif, setEmailNotif] = useState(true);
   const [pushNotif, setPushNotif] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
@@ -88,7 +91,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <DashboardLayout activeRoute="/configuracion" locale="es" t={t}>
+    <DashboardLayout activeRoute="/configuracion" locale={locale} t={t}>
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Header */}
         <div>

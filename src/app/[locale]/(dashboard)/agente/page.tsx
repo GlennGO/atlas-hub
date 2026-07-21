@@ -3,14 +3,17 @@
 import { useTranslations } from "next-intl";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { AgentChat } from "@/components/dashboard/agent-chat";
+import { useParams } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default function AgentPage() {
   const t = useTranslations();
+  const params = useParams();
+  const locale = (params?.locale as string) || "es";
 
   return (
-    <DashboardLayout activeRoute="/agente" locale="es" t={t}>
+    <DashboardLayout activeRoute="/agente" locale={locale} t={t}>
       <div className="max-w-4xl mx-auto flex flex-col space-y-4" style={{ height: "calc(100vh - 140px)" }}>
         {/* Header */}
         <div className="flex items-center justify-between">

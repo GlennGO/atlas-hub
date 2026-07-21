@@ -5,6 +5,7 @@ import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { FilePreviewModal, FilePreviewData } from "@/components/dashboard/file-preview-modal/file-preview-modal";
 import { useState, useEffect, useRef } from "react";
 import { FileText, Image as ImageIcon, Video, Music, File as FileIcon, Download, Upload, X } from "lucide-react";
+import { useParams } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +57,8 @@ function timeAgo(dateStr: string): string {
 
 export default function FilesPage() {
   const t = useTranslations();
+  const params = useParams();
+  const locale = (params?.locale as string) || "es";
   const [filter, setFilter] = useState<"all" | FileType>("all");
   const [files, setFiles] = useState<RealFile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,7 +120,7 @@ export default function FilesPage() {
   ];
 
   return (
-    <DashboardLayout activeRoute="/archivos" locale="es" t={t}>
+    <DashboardLayout activeRoute="/archivos" locale={locale} t={t}>
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header + upload button */}
         <div className="flex items-start justify-between">

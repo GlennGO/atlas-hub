@@ -171,7 +171,7 @@ export default function ProjectDetailPage() {
 
   if (loading) {
     return (
-      <DashboardLayout activeRoute="/proyectos" locale="es" t={t}>
+      <DashboardLayout activeRoute="/proyectos" locale={locale} t={t}>
         <div className="max-w-7xl mx-auto py-20 flex items-center justify-center">
           <div className="w-6 h-6 border-2 border-tertiary/30 border-t-accent-indigo rounded-full animate-spin" />
         </div>
@@ -181,7 +181,7 @@ export default function ProjectDetailPage() {
 
   if (!project) {
     return (
-      <DashboardLayout activeRoute="/proyectos" locale="es" t={t}>
+      <DashboardLayout activeRoute="/proyectos" locale={locale} t={t}>
         <div className="max-w-7xl mx-auto py-20 text-center">
           <p className="text-sm text-tertiary">Proyecto no encontrado</p>
           <a href="/es/proyectos" className="mt-3 inline-block text-sm text-accent-indigo hover:underline">
@@ -197,7 +197,7 @@ export default function ProjectDetailPage() {
   const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   return (
-    <DashboardLayout activeRoute="/proyectos" locale="es" t={t}>
+    <DashboardLayout activeRoute="/proyectos" locale={locale} t={t}>
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Breadcrumb + header */}
         <div className="space-y-4">
