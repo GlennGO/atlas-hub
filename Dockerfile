@@ -12,6 +12,9 @@ RUN if [ -f package-lock.json ]; then npm ci --prefer-offline; else npm install 
 # Copiar código (incluye .env.production con NEXT_PUBLIC_ vars)
 COPY . .
 
+# Cache bust — fuerza rebuild completo
+RUN echo "Build $(date)" > /tmp/buildtime
+
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
