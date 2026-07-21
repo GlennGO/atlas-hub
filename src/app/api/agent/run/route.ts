@@ -67,39 +67,31 @@ export async function POST(request: NextRequest) {
       { role: "user", content: message.trim() },
     ];
 
-    // 5. Llamar Z.AI (GLM) — proveedor principal GlennGO, gratis
-    const apiKey = process.env.ZAI_API_KEY || process.env.OPENROUTER_API_KEY;
+    // 5. Llamar Gemini (Google AI Studio) — GRATIS, 1500 req/día
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       // Guardar mensaje de error
       await supabaseAdmin.from("agent_messages").insert({
         tenant_id: GLENNGO_TENANT,
         direction: "inbound",
-        content: "⚠️ El agente no está configurado. Falta ZAI_API_KEY.",
+        content: "⚠️ El agente no está configurado. Falta GEMINI_API_KEY.",
         status: "error",
       });
       return NextResponse.json(
-        { error: "ZAI_API_KEY no configurado" },
+        { error: "GEMINI_API_KEY no configurado" },
         { status: 500 }
       );
     }
 
-    const isZai = !!process.env.ZAI_API_KEY;
-    const llmEndpoint = isZai
-      ? "https://api.z.ai/api/coding/paas/v4/chat/completions"
-      : "https://openrouter.ai/api/v1/chat/completions";
-    const model = isZai
-      ? "glm-5.2"
-      : (process.env.OPENROUTER_MODEL || "google/gemini-2.0-flash-exp:free");
+    const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
     const llmResponse = await fetch(
-      llmEndpoint,
+      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
       {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://dashboard.glenngo.com",
-          "X-Title": "Atlas Hub",
         },
         body: JSON.stringify({
           model,
@@ -112,7 +104,7 @@ export async function POST(request: NextRequest) {
 
     if (!llmResponse.ok) {
       const errText = await llmResponse.text();
-      console.error("LLM error:", llmResponse.status, errText);
+      console.error("Gemini error:", llmResponse.status, errText);
 
       await supabaseAdmin.from("agent_messages").insert({
         tenant_id: GLENNGO_TENANT,
