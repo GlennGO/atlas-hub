@@ -156,10 +156,36 @@ export default function HomePage() {
           )}
         </section>
 
-        {/* Bottom grid: Activity Feed + Agent Chat */}
+        {/* Bottom grid: Activity Feed + Quick Tasks Summary */}
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <ActivityFeed t={t} />
-          <AgentChat t={t} />
+          {/* Quick stats card replacing the oversized chat widget */}
+          <div className="bg-card border border-app rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp className="w-5 h-5 text-accent-indigo" />
+              <span className="font-medium text-primary text-sm">Estado del sistema</span>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-hover rounded-lg">
+                <span className="text-sm text-secondary">Agente IA</span>
+                <a href={`/${locale}/agente`} className="text-xs text-accent-indigo hover:underline">
+                  Abrir chat →
+                </a>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-hover rounded-lg">
+                <span className="text-sm text-secondary">Tareas pendientes</span>
+                <a href={`/${locale}/tareas`} className="text-xs text-accent-indigo hover:underline">
+                  Ver tablero →
+                </a>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-hover rounded-lg">
+                <span className="text-sm text-secondary">Proyectos activos</span>
+                <a href={`/${locale}/proyectos`} className="text-xs text-accent-indigo hover:underline">
+                  Ver todos →
+                </a>
+              </div>
+            </div>
+          </div>
         </section>
       </div>
     </DashboardLayout>

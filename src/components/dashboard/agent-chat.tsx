@@ -124,7 +124,7 @@ export function AgentChat({ t }: AgentChatProps) {
   };
 
   return (
-    <div className="bg-card border border-app rounded-xl flex flex-col h-full min-h-[300px]">
+    <div className="bg-card border border-app rounded-xl flex flex-col h-full max-h-[600px] min-h-[400px]">
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-app">
         <div className="w-7 h-7 rounded-full bg-accent-indigo/10 flex items-center justify-center">
