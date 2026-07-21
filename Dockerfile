@@ -6,8 +6,8 @@ WORKDIR /app
 # Copiar package files
 COPY package.json package-lock.json* ./
 
-# Instalar deps
-RUN npm ci --prefer-offline || npm install
+# Instalar deps (npm install si no hay lock file, npm ci si lo hay)
+RUN if [ -f package-lock.json ]; then npm ci --prefer-offline; else npm install --no-audit --no-fund; fi
 
 # Copiar código
 COPY . .

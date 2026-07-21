@@ -26,10 +26,11 @@ export async function GET(request: NextRequest) {
 
   // Para cada archivo, generar signed URL de preview
   const filesWithUrls = await Promise.all(
-    (files || []).map(async (file) => {
+    (files || []).map(async (file: Record<string, unknown>) => {
+      const storagePath = String(file.storage_path || "");
       const { data: signedData } = await supabaseAdmin.storage
         .from("atlas-files")
-        .createSignedUrl(file.storage_path, 3600);
+        .createSignedUrl(storagePath, 3600);
 
       return {
         ...file,
