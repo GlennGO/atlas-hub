@@ -25,10 +25,10 @@ interface Project {
   description: string | null;
 }
 
-export default function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function ClientDetailPage({ params: routeParams }: { params: Promise<{ id: string }> }) {
   const t = useTranslations();
-  const params = useParams();
-  const locale = (params?.locale as string) || "es";
+  const urlParams = useParams();
+  const locale = (urlParams?.locale as string) || "es";
   const [clientId, setClientId] = useState("");
   const [client, setClient] = useState<Client | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
