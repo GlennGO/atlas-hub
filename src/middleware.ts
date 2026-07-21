@@ -33,12 +33,17 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Rutas públicas (no requieren auth)
   const pathname = request.nextUrl.pathname;
+
+  // Las APIs manejan su propia auth (devuelven 401 JSON, no redirect)
+  if (pathname.startsWith("/api/")) {
+    return supabaseResponse;
+  }
+
+  // Rutas públicas (no requieren auth)
   const isPublicRoute =
     pathname.startsWith("/login") ||
     pathname.startsWith("/auth") ||
-    pathname.startsWith("/api/auth") ||
     pathname === "/" ||
     pathname.match(/^\/(es|en)$/); // root locale redirects
 
