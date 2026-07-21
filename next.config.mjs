@@ -10,6 +10,11 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 const nextConfig = {
   reactStrictMode: true,
   output: "standalone",
+  // Forzar inlining de NEXT_PUBLIC vars en el build
+  env: {
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
+  },
   typescript: {
     // Build hace deploy aunque haya warnings de tipos.
     // Los errores críticos se atrapan en dev local.
