@@ -40,9 +40,9 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // Rutas públicas (no requieren auth)
+  // Rutas públicas (no requieren auth) — considerar prefijo de locale /es o /en
   const isPublicRoute =
-    pathname.startsWith("/login") ||
+    pathname.includes("/login") ||
     pathname.startsWith("/auth") ||
     pathname === "/" ||
     pathname.match(/^\/(es|en)$/); // root locale redirects
