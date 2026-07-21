@@ -10,7 +10,8 @@
     "tasks": "Tasks",
     "agent": "AI Agent",
     "metrics": "Metrics",
-    "settings": "Settings"
+    "settings": "Settings",
+    "clients": "Clients"
   },
   "Home": {
     "activeProjects": "Active Projects",
@@ -141,5 +142,20 @@
     "edit": "Edit",
     "create": "Create",
     "close": "Close"
+  },
+  "Clients": {
+    "title": "Clients",
+    "subtitle": "Manage your clients and their projects",
+    "new": "New client",
+    "name": "Name",
+    "email": "Email",
+    "phone": "Phone",
+    "notes": "Notes",
+    "create": "Create client",
+    "empty": "No clients yet",
+    "emptyHint": "Create your first client to associate projects",
+    "projects": "Projects",
+    "edit": "Edit",
+    "delete": "Delete"
   }
 }

@@ -10,7 +10,8 @@
     "tasks": "Tareas",
     "agent": "Agente IA",
     "metrics": "Métricas",
-    "settings": "Configuración"
+    "settings": "Configuración",
+    "clients": "Clientes"
   },
   "Home": {
     "activeProjects": "Proyectos Activos",
@@ -141,5 +142,20 @@
     "edit": "Editar",
     "create": "Crear",
     "close": "Cerrar"
+  },
+  "Clients": {
+    "title": "Clientes",
+    "subtitle": "Gestiona tus clientes y sus proyectos",
+    "new": "Nuevo cliente",
+    "name": "Nombre",
+    "email": "Email",
+    "phone": "Teléfono",
+    "notes": "Notas",
+    "create": "Crear cliente",
+    "empty": "No hay clientes todavía",
+    "emptyHint": "Creá tu primer cliente para asociarle proyectos",
+    "projects": "Proyectos",
+    "edit": "Editar",
+    "delete": "Eliminar"
   }
 }

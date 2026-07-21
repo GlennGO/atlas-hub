@@ -2,9 +2,8 @@
 
 import { useTranslations } from "next-intl";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { useState } from "react";
-import { User, Bell, Palette, Plug, Check } from "lucide-react";
-
+import { useState, useEffect } from "react";
+import { User, Bell, Palette, Plug, Check, Building2, Loader2 } from "lucide-react";
 export const dynamic = "force-dynamic";
 
 // Toggle switch reutilizable
@@ -42,6 +41,46 @@ export default function SettingsPage() {
   const [pushNotif, setPushNotif] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
   const [saved, setSaved] = useState(false);
+
+  // Branding state
+  const [agencyName, setAgencyName] = useState("GlennGO");
+  const [agencyLogo, setAgencyLogo] = useState<string | null>(null);
+  const [brandingLoading, setBrandingLoading] = useState(true);
+  const [brandingSaving, setBrandingSaving] = useState(false);
+  const [brandingSaved, setBrandingSaved] = useState(false);
+
+  useEffect(() => {
+    async function loadBranding() {
+      try {
+        const res = await fetch("/api/settings/branding");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.branding?.name) setAgencyName(data.branding.name);
+          if (data.branding?.logo_url) setAgencyLogo(data.branding.logo_url);
+        }
+      } catch {
+        // silent
+      } finally {
+        setBrandingLoading(false);
+      }
+    }
+    loadBranding();
+  }, []);
+
+  async function handleBrandingSave() {
+    setBrandingSaving(true);
+    try {
+      await fetch("/api/settings/branding", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: agencyName }),
+      });
+      setBrandingSaved(true);
+      setTimeout(() => setBrandingSaved(false), 2000);
+    } finally {
+      setBrandingSaving(false);
+    }
+  }
 
   const handleSave = () => {
     setSaved(true);
@@ -85,6 +124,55 @@ export default function SettingsPage() {
                 className="w-full bg-hover border border-app rounded-md px-3 py-2 text-sm text-tertiary cursor-not-allowed"
               />
             </div>
+          </div>
+        </SettingSection>
+
+        {/* Branding */}
+        <SettingSection icon={Building2} title="Branding de la agencia">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs text-tertiary mb-1">Nombre de la agencia</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={agencyName}
+                  onChange={e => setAgencyName(e.target.value)}
+                  disabled={brandingLoading}
+                  className="flex-1 bg-app border border-app rounded-md px-3 py-2 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-indigo/50"
+                />
+                <button
+                  onClick={handleBrandingSave}
+                  disabled={brandingSaving}
+                  className="px-3 py-2 rounded-md bg-accent-indigo text-white text-sm font-medium hover:bg-accent-indigo/90 disabled:opacity-40 whitespace-nowrap"
+                >
+                  {brandingSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Guardar"}
+                </button>
+              </div>
+              {brandingSaved && (
+                <span className="flex items-center gap-1 text-xs text-success mt-1">
+                  <Check className="w-3.5 h-3.5" /> Guardado
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3 pt-2 border-t border-app">
+              <div className="w-12 h-12 rounded-lg bg-accent-indigo flex items-center justify-center">
+                {agencyLogo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={agencyLogo} alt="Logo" className="w-full h-full rounded-lg object-cover" />
+                ) : (
+                  <span className="text-white font-bold text-lg">
+                    {agencyName.charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <div>
+                <p className="text-sm text-primary font-medium">{agencyName}</p>
+                <p className="text-xs text-tertiary">Así se verá tu marca en el dashboard</p>
+              </div>
+            </div>
+            <p className="text-xs text-tertiary/70">
+              El logo personalizado y colores por cliente estarán disponibles en una próxima actualización.
+            </p>
           </div>
         </SettingSection>
 
