@@ -21,11 +21,12 @@ export function DashboardLayout({
   const [locale, setLocale] = useState(initialLocale);
 
   const handleLocaleToggle = (newLocale: string) => {
-    setLocale(newLocale);
-    // In production this would update the URL /es or /en
-    // For now we store it in localStorage
     if (typeof window !== "undefined") {
       localStorage.setItem("atlas-locale", newLocale);
+      // Replace current URL locale prefix and reload so server re-renders in new language
+      const currentPath = window.location.pathname;
+      const newPath = currentPath.replace(/^\/(es|en)/, `/${newLocale}`);
+      window.location.href = newPath;
     }
   };
 
