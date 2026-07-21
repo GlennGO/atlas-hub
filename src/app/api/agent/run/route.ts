@@ -67,26 +67,32 @@ export async function POST(request: NextRequest) {
       { role: "user", content: message.trim() },
     ];
 
-    // 5. Llamar OpenRouter
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    // 5. Llamar Z.AI (GLM) — proveedor principal GlennGO, gratis
+    const apiKey = process.env.ZAI_API_KEY || process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
       // Guardar mensaje de error
       await supabaseAdmin.from("agent_messages").insert({
         tenant_id: GLENNGO_TENANT,
         direction: "inbound",
-        content: "⚠️ El agente no está configurado. Falta OPENROUTER_API_KEY.",
+        content: "⚠️ El agente no está configurado. Falta ZAI_API_KEY.",
         status: "error",
       });
       return NextResponse.json(
-        { error: "OPENROUTER_API_KEY no configurado" },
+        { error: "ZAI_API_KEY no configurado" },
         { status: 500 }
       );
     }
 
-    const model = process.env.OPENROUTER_MODEL || "google/gemini-2.0-flash-exp:free";
+    const isZai = !!process.env.ZAI_API_KEY;
+    const llmEndpoint = isZai
+      ? "https://api.z.ai/api/coding/paas/v4/chat/completions"
+      : "https://openrouter.ai/api/v1/chat/completions";
+    const model = isZai
+      ? "glm-5.2"
+      : (process.env.OPENROUTER_MODEL || "google/gemini-2.0-flash-exp:free");
 
     const llmResponse = await fetch(
-      "https://openrouter.ai/api/v1/chat/completions",
+      llmEndpoint,
       {
         method: "POST",
         headers: {
@@ -106,7 +112,7 @@ export async function POST(request: NextRequest) {
 
     if (!llmResponse.ok) {
       const errText = await llmResponse.text();
-      console.error("OpenRouter error:", llmResponse.status, errText);
+      console.error("LLM error:", llmResponse.status, errText);
 
       await supabaseAdmin.from("agent_messages").insert({
         tenant_id: GLENNGO_TENANT,
