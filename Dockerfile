@@ -31,7 +31,8 @@ ENV HOSTNAME=0.0.0.0
 # Copiar standalone output (auto-generado por Next.js)
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
+# public folder may be empty, create it as fallback
+RUN mkdir -p ./public
 
 EXPOSE 3000
 
