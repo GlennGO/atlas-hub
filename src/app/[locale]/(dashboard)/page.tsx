@@ -5,58 +5,86 @@ import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { ProjectCard } from "@/components/dashboard/project-card/project-card";
 import { ActivityFeed } from "@/components/dashboard/activity-feed/activity-feed";
 import { AgentChat } from "@/components/dashboard/agent-chat";
-import { FolderKanban, FileText, CheckSquare, Clock, TrendingUp } from "lucide-react";
+import { FolderKanban, FileText, CheckSquare, TrendingUp } from "lucide-react";
+import { useState, useEffect } from "react";
 
-// Force dynamic rendering to avoid next-intl static generation issues
 export const dynamic = "force-dynamic";
 
-// Mock data — will be replaced by Supabase queries
-const mockProjects = [
-  {
-    name: "REPLai Pilot",
-    client: "FumiPlus Toluca",
-    progress: 75,
-    fileCount: 12,
-    taskCount: 5,
-    status: "active" as const,
-  },
-  {
-    name: "Atlas Hub",
-    client: "GlennGO",
-    progress: 35,
-    fileCount: 8,
-    taskCount: 3,
-    status: "active" as const,
-  },
-  {
-    name: "Etsy Digital Products",
-    client: "GlennGO",
-    progress: 40,
-    fileCount: 15,
-    taskCount: 7,
-    status: "active" as const,
-  },
-];
+interface Project {
+  id: string;
+  name: string;
+  description: string | null;
+  status: "active" | "paused" | "completed" | "archived";
+  color: string | null;
+  fileCount: number;
+  taskCount: number;
+  completedTasks: number;
+  progress: number;
+  client_name?: string | null;
+}
 
-// KPI cards above the project grid
-const stats = [
-  { label: "Proyectos activos", value: "3", change: "+1 esta semana", icon: FolderKanban, color: "text-accent-indigo" },
-  { label: "Archivos totales", value: "47", change: "+8 hoy", icon: FileText, color: "text-success" },
-  { label: "Tareas pendientes", value: "12", change: "3 urgentes", icon: CheckSquare, color: "text-warning" },
-  { label: "Actividad hoy", value: "23", change: "+15% vs ayer", icon: TrendingUp, color: "text-accent-coral" },
-];
+interface ActivityEvent {
+  id: string;
+  type: string;
+  payload: Record<string, unknown>;
+  actor: string | null;
+  created_at: string;
+}
 
 export default function HomePage() {
   const t = useTranslations();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [activity, setActivity] = useState<ActivityEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [projRes, actRes] = await Promise.all([
+          fetch("/api/projects"),
+          fetch("/api/activity?limit=10"),
+        ]);
+        const projData = await projRes.json();
+        const actData = await actRes.json();
+        if (projData.projects) setProjects(projData.projects);
+        if (actData.activity) setActivity(actData.activity);
+      } catch (err) {
+        console.error("Error loading home data:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  // Stats reales
+  const activeProjects = projects.filter((p) => p.status === "active").length;
+  const totalFiles = projects.reduce((acc, p) => acc + p.fileCount, 0);
+  const pendingTasks = projects.reduce(
+    (acc, p) => acc + (p.taskCount - p.completedTasks),
+    0
+  );
+  const activityToday = activity.filter((a) => {
+    const today = new Date();
+    const eventDate = new Date(a.created_at);
+    return eventDate.toDateString() === today.toDateString();
+  }).length;
+
+  const stats = [
+    { label: "Proyectos activos", value: String(activeProjects), change: `${projects.length} en total`, icon: FolderKanban, color: "text-accent-indigo" },
+    { label: "Archivos totales", value: String(totalFiles), change: "en todos los proyectos", icon: FileText, color: "text-success" },
+    { label: "Tareas pendientes", value: String(pendingTasks), change: `${projects.reduce((a, p) => a + p.completedTasks, 0)} completadas`, icon: CheckSquare, color: "text-warning" },
+    { label: "Actividad hoy", value: String(activityToday), change: "eventos de hoy", icon: TrendingUp, color: "text-accent-coral" },
+  ];
 
   return (
     <DashboardLayout activeRoute="/" locale="es" t={t}>
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-xl font-bold text-primary">{t("Home.title") || "Buenos días, Glenn"}</h1>
+          <h1 className="text-xl font-bold text-primary">Buenos días, Glenn</h1>
           <p className="text-sm text-tertiary mt-1">
-            Aquí está lo que pasó hoy en tu operación.
+            Esto es lo que está pasando en tu operación.
           </p>
         </div>
 
@@ -70,7 +98,9 @@ export default function HomePage() {
                   <span className="text-xs text-tertiary font-medium">{stat.label}</span>
                   <Icon className={`w-3.5 h-3.5 ${stat.color}`} />
                 </div>
-                <p className="text-2xl font-bold text-primary tracking-tight">{stat.value}</p>
+                <p className="text-2xl font-bold text-primary tracking-tight">
+                  {loading ? "..." : stat.value}
+                </p>
                 <p className="text-[11px] text-tertiary mt-1">{stat.change}</p>
               </div>
             );
@@ -80,21 +110,47 @@ export default function HomePage() {
         {/* Active Projects */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-primary">
-              {t("Home.activeProjects")}
-            </h2>
+            <h2 className="text-lg font-semibold text-primary">Proyectos activos</h2>
             <a href="/es/proyectos" className="text-xs text-accent-indigo hover:underline">
               Ver todos →
             </a>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {mockProjects.map((project) => (
-              <a key={project.name} href={`/es/proyectos/${project.name.toLowerCase().replace(/\s+/g, "-")}`}>
-                <ProjectCard {...project} t={t} />
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-card border border-app rounded-xl p-5 h-32 animate-pulse">
+                  <div className="h-4 bg-hover rounded w-2/3 mb-2" />
+                  <div className="h-3 bg-hover rounded w-1/2 mb-4" />
+                  <div className="h-2 bg-hover rounded w-full" />
+                </div>
+              ))}
+            </div>
+          ) : projects.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {projects.slice(0, 6).map((project) => (
+                <a key={project.id} href={`/es/proyectos/${project.id}`}>
+                  <ProjectCard
+                    name={project.name}
+                    client={project.client_name || "GlennGO"}
+                    progress={project.progress}
+                    fileCount={project.fileCount}
+                    taskCount={project.taskCount}
+                    status={(project.status === "archived" ? "completed" : project.status) as "active" | "paused" | "completed"}
+                    t={t}
+                  />
+                </a>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-card border border-app border-dashed rounded-xl p-12 text-center">
+              <FolderKanban className="w-10 h-10 text-tertiary mx-auto mb-3" />
+              <p className="text-sm text-tertiary mb-1">No hay proyectos todavía</p>
+              <a href="/es/proyectos" className="text-xs text-accent-indigo hover:underline">
+                Crear el primero →
               </a>
-            ))}
-          </div>
+            </div>
+          )}
         </section>
 
         {/* Bottom grid: Activity Feed + Agent Chat */}

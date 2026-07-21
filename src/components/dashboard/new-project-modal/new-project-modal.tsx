@@ -12,14 +12,14 @@ interface NewProjectModalProps {
 }
 
 const presetColors = [
-  "#4f46e5", // indigo
-  "#FC7C5B", // coral
-  "#10B981", // emerald
-  "#F59E0B", // amber
-  "#EF4444", // red
-  "#8B5CF6", // violet
-  "#06B6D4", // cyan
-  "#EC4899", // pink
+  "#4f46e5",
+  "#FC7C5B",
+  "#10B981",
+  "#F59E0B",
+  "#EF4444",
+  "#8B5CF6",
+  "#06B6D4",
+  "#EC4899",
 ];
 
 export function NewProjectModal({ open, onClose, locale, t }: NewProjectModalProps) {
@@ -28,6 +28,7 @@ export function NewProjectModal({ open, onClose, locale, t }: NewProjectModalPro
   const [description, setDescription] = useState("");
   const [color, setColor] = useState(presetColors[0]);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!open) return null;
 
@@ -36,28 +37,45 @@ export function NewProjectModal({ open, onClose, locale, t }: NewProjectModalPro
     if (!name.trim()) return;
 
     setSubmitting(true);
+    setError(null);
 
-    // TODO: POST to /api/projects when Supabase is configured
-    // For now, simulate
-    await new Promise((r) => setTimeout(r, 600));
+    try {
+      const res = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          client: client.trim() || null,
+          description: description.trim() || null,
+          color,
+        }),
+      });
+      const data = await res.json();
 
-    setSubmitting(false);
-    setName("");
-    setClient("");
-    setDescription("");
-    setColor(presetColors[0]);
-    onClose();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Error desconocido");
+      }
+
+      // Reset y cerrar
+      setName("");
+      setClient("");
+      setDescription("");
+      setColor(presetColors[0]);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al crear proyecto");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Modal */}
       <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[480px] max-w-[90vw] bg-card border border-app rounded-xl shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-app">
@@ -96,7 +114,7 @@ export function NewProjectModal({ open, onClose, locale, t }: NewProjectModalPro
           {/* Client */}
           <div>
             <label className="block text-xs font-medium text-secondary mb-1.5">
-              Cliente
+              Cliente (opcional)
             </label>
             <input
               type="text"
@@ -110,7 +128,7 @@ export function NewProjectModal({ open, onClose, locale, t }: NewProjectModalPro
           {/* Description */}
           <div>
             <label className="block text-xs font-medium text-secondary mb-1.5">
-              Descripción
+              Descripción (opcional)
             </label>
             <textarea
               value={description}
@@ -142,6 +160,13 @@ export function NewProjectModal({ open, onClose, locale, t }: NewProjectModalPro
               ))}
             </div>
           </div>
+
+          {/* Error */}
+          {error && (
+            <div className="text-xs text-error bg-error/10 border border-error/20 rounded-md px-3 py-2">
+              {error}
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-2 pt-2 border-t border-app">
