@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { User, Bell, Palette, Plug, Check, Building2, Loader2 } from "lucide-react";
 import { useParams } from "next/navigation";
 export const dynamic = "force-dynamic";
@@ -40,20 +40,55 @@ export default function SettingsPage() {
   const t = useTranslations();
   const params = useParams();
   const locale = (params?.locale as string) || "es";
+
+  // ── Profile state ──
+  const [profileName, setProfileName] = useState("Glenn Gómez");
+  const [profileEmail, setProfileEmail] = useState("glenn@glenngo.com");
+  const [profileRole] = useState("CEO");
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+
+  // ── Notifications state ──
   const [emailNotif, setEmailNotif] = useState(true);
   const [pushNotif, setPushNotif] = useState(false);
-  const [darkMode, setDarkMode] = useState(true);
-  const [saved, setSaved] = useState(false);
+  const [notifSaving, setNotifSaving] = useState(false);
+  const [notifSaved, setNotifSaved] = useState(false);
 
-  // Branding state
+  // ── Preferences (local-only for now) ──
+  const [darkMode, setDarkMode] = useState(true);
+
+  // ── Branding state ──
   const [agencyName, setAgencyName] = useState("GlennGO");
   const [agencyLogo, setAgencyLogo] = useState<string | null>(null);
   const [brandingLoading, setBrandingLoading] = useState(true);
   const [brandingSaving, setBrandingSaving] = useState(false);
   const [brandingSaved, setBrandingSaved] = useState(false);
 
+  // ── Load all settings on mount ──
   useEffect(() => {
-    async function loadBranding() {
+    async function loadSettings() {
+      // Profile + Notifications
+      try {
+        const res = await fetch("/api/settings/profile");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.profile) {
+            if (data.profile.name) setProfileName(data.profile.name);
+            if (data.profile.email) setProfileEmail(data.profile.email);
+          }
+          if (data.notifications) {
+            if (typeof data.notifications.email === "boolean") setEmailNotif(data.notifications.email);
+            if (typeof data.notifications.push === "boolean") setPushNotif(data.notifications.push);
+          }
+        }
+      } catch {
+        // silent
+      } finally {
+        setProfileLoading(false);
+      }
+
+      // Branding
       try {
         const res = await fetch("/api/settings/branding");
         if (res.ok) {
@@ -67,9 +102,30 @@ export default function SettingsPage() {
         setBrandingLoading(false);
       }
     }
-    loadBranding();
+    loadSettings();
   }, []);
 
+  // ── Save profile ──
+  async function handleProfileSave() {
+    setProfileSaving(true);
+    try {
+      await fetch("/api/settings/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          profile: { name: profileName, email: profileEmail },
+        }),
+      });
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 2000);
+    } catch {
+      // silent
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
+  // ── Save branding ──
   async function handleBrandingSave() {
     setBrandingSaving(true);
     try {
@@ -85,9 +141,39 @@ export default function SettingsPage() {
     }
   }
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  // ── Save notifications (debounced via toggle handler) ──
+  const saveNotifications = useCallback(
+    async (email: boolean, push: boolean) => {
+      setNotifSaving(true);
+      try {
+        await fetch("/api/settings/profile", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            notifications: { email, push },
+          }),
+        });
+        setNotifSaved(true);
+        setTimeout(() => setNotifSaved(false), 2000);
+      } catch {
+        // silent
+      } finally {
+        setNotifSaving(false);
+      }
+    },
+    []
+  );
+
+  const handleEmailToggle = () => {
+    const next = !emailNotif;
+    setEmailNotif(next);
+    saveNotifications(next, pushNotif);
+  };
+
+  const handlePushToggle = () => {
+    const next = !pushNotif;
+    setPushNotif(next);
+    saveNotifications(emailNotif, next);
   };
 
   return (
@@ -106,26 +192,50 @@ export default function SettingsPage() {
               <label className="block text-xs text-tertiary mb-1">{t("Settings.name")}</label>
               <input
                 type="text"
-                defaultValue="Glenn Gómez"
-                className="w-full bg-app border border-app rounded-md px-3 py-2 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-indigo/50"
+                value={profileName}
+                onChange={e => setProfileName(e.target.value)}
+                disabled={profileLoading}
+                className="w-full bg-app border border-app rounded-md px-3 py-2 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-indigo/50 disabled:opacity-50"
               />
             </div>
             <div>
               <label className="block text-xs text-tertiary mb-1">{t("Settings.email")}</label>
               <input
                 type="email"
-                defaultValue="glenn@glenngo.com"
-                className="w-full bg-app border border-app rounded-md px-3 py-2 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-indigo/50"
+                value={profileEmail}
+                onChange={e => setProfileEmail(e.target.value)}
+                disabled={profileLoading}
+                className="w-full bg-app border border-app rounded-md px-3 py-2 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent-indigo/50 disabled:opacity-50"
               />
             </div>
             <div>
               <label className="block text-xs text-tertiary mb-1">{t("Settings.role")}</label>
               <input
                 type="text"
-                defaultValue="CEO"
+                value={profileRole}
                 disabled
                 className="w-full bg-hover border border-app rounded-md px-3 py-2 text-sm text-tertiary cursor-not-allowed"
               />
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                onClick={handleProfileSave}
+                disabled={profileSaving || profileLoading}
+                className="px-3 py-2 rounded-md bg-accent-indigo text-white text-sm font-medium hover:bg-accent-indigo/90 disabled:opacity-40"
+              >
+                {profileSaving ? (
+                  <span className="flex items-center gap-1.5">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Guardando...
+                  </span>
+                ) : (
+                  "Guardar perfil"
+                )}
+              </button>
+              {profileSaved && (
+                <span className="flex items-center gap-1 text-xs text-success">
+                  <Check className="w-3.5 h-3.5" /> Guardado
+                </span>
+              )}
             </div>
           </div>
         </SettingSection>
@@ -207,12 +317,25 @@ export default function SettingsPage() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-sm text-primary">{t("Settings.emailNotifications")}</p>
-              <Toggle enabled={emailNotif} onChange={() => setEmailNotif(!emailNotif)} />
+              <Toggle enabled={emailNotif} onChange={handleEmailToggle} />
             </div>
             <div className="flex items-center justify-between">
               <p className="text-sm text-primary">{t("Settings.pushNotifications")}</p>
-              <Toggle enabled={pushNotif} onChange={() => setPushNotif(!pushNotif)} />
+              <Toggle enabled={pushNotif} onChange={handlePushToggle} />
             </div>
+            {(notifSaving || notifSaved) && (
+              <div className="pt-1">
+                {notifSaving ? (
+                  <span className="flex items-center gap-1 text-xs text-tertiary">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Guardando...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-xs text-success">
+                    <Check className="w-3.5 h-3.5" /> Guardado
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </SettingSection>
 
@@ -241,22 +364,6 @@ export default function SettingsPage() {
             </div>
           </div>
         </SettingSection>
-
-        {/* Save button */}
-        <div className="flex items-center gap-3 pb-6">
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 rounded-md bg-accent-indigo text-white text-sm font-medium hover:bg-accent-indigo/90 transition-colors"
-          >
-            {t("Settings.save")}
-          </button>
-          {saved && (
-            <span className="flex items-center gap-1 text-sm text-success animate-fade-in">
-              <Check className="w-4 h-4" />
-              {t("Settings.saved")}
-            </span>
-          )}
-        </div>
       </div>
     </DashboardLayout>
   );

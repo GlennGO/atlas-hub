@@ -162,6 +162,22 @@ create index if not exists agent_messages_tenant_id_idx   on public.agent_messag
 create index if not exists agent_messages_project_id_idx  on public.agent_messages(project_id);
 
 -- ──────────────────────────────────────────────
+-- Settings — flexible key/value store per tenant
+-- (profile data, notification preferences, etc.)
+-- ──────────────────────────────────────────────
+create table if not exists public.settings (
+  id          uuid primary key default uuid_generate_v4(),
+  tenant_id   uuid not null references public.tenants(id) on delete cascade,
+  key         text not null,
+  value       jsonb not null default '{}'::jsonb,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  unique (tenant_id, key)
+);
+
+create index if not exists settings_tenant_id_idx on public.settings(tenant_id);
+
+-- ──────────────────────────────────────────────
 -- updated_at triggers
 -- ──────────────────────────────────────────────
 create or replace function public.set_updated_at()
@@ -175,7 +191,7 @@ $$;
 do $$
 declare t text;
 begin
-  for t in select unnest(array['tenants','clients','projects','tasks'])
+  for t in select unnest(array['tenants','clients','projects','tasks','settings'])
   loop
     execute format($f$
       drop trigger if exists set_updated_at on public.%I;
@@ -199,6 +215,7 @@ alter table public.files                enable row level security;
 alter table public.tasks                enable row level security;
 alter table public.activity_events      enable row level security;
 alter table public.agent_messages       enable row level security;
+alter table public.settings             enable row level security;
 
 -- Helper: tenant_ids the current user belongs to
 create or replace function public.current_user_tenant_ids()
@@ -221,7 +238,7 @@ create policy "memberships: read own tenant"
 do $$
 declare tbl text;
 begin
-  for tbl in select unnest(array['clients','projects','files','tasks','activity_events','agent_messages'])
+  for tbl in select unnest(array['clients','projects','files','tasks','activity_events','agent_messages','settings'])
   loop
     execute format($f$
       create policy "%I: read own tenant"   on public.%I for select using (tenant_id in (select public.current_user_tenant_ids()));

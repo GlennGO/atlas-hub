@@ -172,6 +172,33 @@ export interface Database {
         };
         Update: Partial<Database["public"]["Tables"]["agent_messages"]["Insert"]>;
       };
+      // ──────────────────────────────────────────────
+      // Settings — flexible key/value store per tenant
+      // ──────────────────────────────────────────────
+      settings: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          key: string;
+          value: Record<string, unknown>;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          key: string;
+          value?: Record<string, unknown>;
+        };
+        Update: Partial<Database["public"]["Tables"]["settings"]["Insert"]> & { updated_at?: string };
+      };
+    };
+    Views: Record<string, never>;
+    Functions: {
+      exec_sql: {
+        Args: { sql: string };
+        Returns: unknown;
+      };
     };
   };
 }
