@@ -13,7 +13,7 @@ import {
   useSensor,
   useSensors,
   useDroppable,
-  closestCorners,
+  closestCenter,
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
@@ -228,10 +228,11 @@ function KanbanColumn({
 
   return (
     <div
+      ref={setNodeRef}
       className={[
-        "bg-card border rounded-xl p-4 flex flex-col transition-colors min-h-[200px]",
+        "bg-card border rounded-xl p-4 flex flex-col transition-colors min-h-[400px]",
         isOver
-          ? "border-accent-indigo/50 bg-accent-indigo/5"
+          ? "border-accent-indigo/50 bg-accent-indigo/5 ring-2 ring-accent-indigo/20"
           : "border-app",
       ].join(" ")}
     >
@@ -245,20 +246,14 @@ function KanbanColumn({
         </span>
       </div>
 
-      {/* Droppable area */}
-      <div
-        ref={setNodeRef}
-        className={[
-          "space-y-2 flex-1 rounded-lg transition-colors",
-          isOver ? "bg-accent-indigo/5" : "",
-        ].join(" ")}
-      >
+      {/* Droppable area — fills entire column */}
+      <div className="space-y-2 flex-1">
         <SortableContext
           items={columnTasks.map((t) => t.id)}
           strategy={verticalListSortingStrategy}
         >
           {columnTasks.length > 0 ? (
-            columnTasks.map((task, index) => (
+            columnTasks.map((task) => (
               <SortableTaskCard
                 key={task.id}
                 task={task}
@@ -271,9 +266,11 @@ function KanbanColumn({
               />
             ))
           ) : (
-            <p className="text-xs text-tertiary text-center py-4">
-              {t("Tasks.noTasks")}
-            </p>
+            <div className="flex items-center justify-center min-h-[60px] rounded-lg border border-dashed border-app">
+              <p className="text-xs text-tertiary text-center py-4">
+                {t("Tasks.noTasks")}
+              </p>
+            </div>
           )}
         </SortableContext>
       </div>
@@ -696,7 +693,7 @@ export default function TasksPage() {
           /* Kanban board — 4 columnas with drag & drop */
           <DndContext
             sensors={sensors}
-            collisionDetection={closestCorners}
+            collisionDetection={closestCenter}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >
