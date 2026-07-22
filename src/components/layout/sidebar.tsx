@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Home, FolderKanban, FileText, CheckSquare, Bot, BarChart3, Settings, Plus, Menu, X, Building2 } from "lucide-react";
+import { Home, FolderKanban, FileText, CheckSquare, Bot, BarChart3, Settings, Plus, Menu, X, Building2, TrendingUp } from "lucide-react";
 
 // Slugs en español — el locale se prependa al href en runtime
 const navItems = [
   { key: "home", icon: Home, href: "/" },
+  { key: "crm", icon: TrendingUp, href: "/crm" },
   { key: "projects", icon: FolderKanban, href: "/proyectos" },
   { key: "clients", icon: Building2, href: "/clientes" },
   { key: "files", icon: FileText, href: "/archivos" },
