@@ -73,6 +73,7 @@
     "todo": "To Do",
     "inProgress": "In Progress",
     "done": "Done",
+    "review": "In Review",
     "priority": "Priority",
     "high": "High",
     "medium": "Medium",

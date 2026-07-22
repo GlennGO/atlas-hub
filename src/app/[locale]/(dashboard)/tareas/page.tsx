@@ -2,9 +2,29 @@
 
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { Plus, X, ChevronLeft, ChevronRight, AlertCircle, Loader2, Inbox } from "lucide-react";
+import { Plus, X, AlertCircle, Loader2, Inbox, GripVertical, Sparkles } from "lucide-react";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  useDroppable,
+  closestCorners,
+  type DragEndEvent,
+  type DragStartEvent,
+  type DragOverEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +33,7 @@ export const dynamic = "force-dynamic";
 // ──────────────────────────────────────────────
 
 // Internal column keys (camelCase, matching translation keys)
-type TaskStatus = "todo" | "inProgress" | "done";
+type TaskStatus = "todo" | "inProgress" | "review" | "done";
 type Priority = "high" | "medium" | "low";
 
 interface Task {
@@ -21,7 +41,7 @@ interface Task {
   title: string;
   project_id: string | null;
   project_name?: string | null;
-  status: string; // raw value from API (todo | in_progress | inProgress | done | ...)
+  status: string; // raw value from API (todo | in_progress | inProgress | done | review | ...)
   priority: string; // raw value from API
   assignee?: string | null;
   assigned_to?: string | null;
@@ -46,16 +66,18 @@ const STATUS_TO_COLUMN: Record<string, TaskStatus> = {
   in_progress: "inProgress",
   inprogress: "inProgress",
   inProgress: "inProgress",
+  review: "review",
   done: "done",
 };
 
 const COLUMN_TO_DB_STATUS: Record<TaskStatus, string> = {
   todo: "todo",
   inProgress: "in_progress",
+  review: "review",
   done: "done",
 };
 
-const COLUMN_ORDER: TaskStatus[] = ["todo", "inProgress", "done"];
+const COLUMN_ORDER: TaskStatus[] = ["todo", "inProgress", "review", "done"];
 
 const priorityColors: Record<string, string> = {
   high: "bg-error/10 text-error",
@@ -76,14 +98,183 @@ function columnOf(task: Task): TaskStatus {
 }
 
 // ──────────────────────────────────────────────
-// Component
+// Draggable Task Card
+// ──────────────────────────────────────────────
+
+interface TaskCardProps {
+  task: Task;
+  projectName: string;
+  t: ReturnType<typeof useTranslations>;
+  isUpdating: boolean;
+  onSendToHermes?: (task: Task) => void;
+  sendingToHermes?: boolean;
+}
+
+function SortableTaskCard({ task, projectName, t, isUpdating, onSendToHermes, sendingToHermes }: TaskCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id });
+
+  const pLabel = priorityLabel(task.priority);
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={[
+        "group bg-hover border border-app rounded-lg p-3 transition-all animate-fade-in",
+        isDragging
+          ? "shadow-lg ring-2 ring-accent-indigo/40 cursor-grabbing"
+          : "hover:border-accent-indigo/30 cursor-grab",
+      ].join(" ")}
+      {...attributes}
+      {...listeners}
+    >
+      {/* Drag handle + title */}
+      <div className="flex items-start gap-1.5">
+        <GripVertical
+          size={14}
+          className="text-tertiary/40 flex-shrink-0 mt-0.5 group-hover:text-tertiary transition-colors"
+        />
+        <p className="text-sm font-medium text-primary mb-1 flex-1">
+          {task.title}
+        </p>
+      </div>
+      <p className="text-xs text-tertiary mb-2 pl-5">{projectName}</p>
+      <div className="flex items-center justify-between gap-2 pl-5">
+        <span
+          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+            priorityColors[pLabel]
+          }`}
+        >
+          {t(`Tasks.${pLabel}`)}
+        </span>
+        <div className="flex items-center gap-1">
+          {onSendToHermes && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onSendToHermes(task);
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              disabled={sendingToHermes || isUpdating}
+              className="p-1 rounded text-tertiary hover:text-accent-indigo hover:bg-app transition-colors disabled:opacity-30 cursor-pointer"
+              title="Enviar a Hermes"
+            >
+              {sendingToHermes ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : (
+                <Sparkles size={12} />
+              )}
+            </button>
+          )}
+          {isUpdating && (
+            <Loader2 size={12} className="animate-spin text-tertiary" />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Droppable Column
+// ──────────────────────────────────────────────
+
+interface KanbanColumnProps {
+  columnKey: TaskStatus;
+  columnTasks: Task[];
+  projectNameFor: (task: Task) => string;
+  t: ReturnType<typeof useTranslations>;
+  updatingId: string | null;
+  onSendToHermes?: (task: Task) => void;
+  sendingToHermesId?: string | null;
+}
+
+function KanbanColumn({
+  columnKey,
+  columnTasks,
+  projectNameFor,
+  t,
+  updatingId,
+  onSendToHermes,
+  sendingToHermesId,
+}: KanbanColumnProps) {
+  const { setNodeRef, isOver } = useDroppable({ id: columnKey });
+
+  return (
+    <div
+      className={[
+        "bg-card border rounded-xl p-4 flex flex-col transition-colors min-h-[200px]",
+        isOver
+          ? "border-accent-indigo/50 bg-accent-indigo/5"
+          : "border-app",
+      ].join(" ")}
+    >
+      {/* Column header */}
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-secondary">
+          {t(`Tasks.${columnKey}`)}
+        </h3>
+        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-hover text-tertiary">
+          {columnTasks.length}
+        </span>
+      </div>
+
+      {/* Droppable area */}
+      <div
+        ref={setNodeRef}
+        className={[
+          "space-y-2 flex-1 rounded-lg transition-colors",
+          isOver ? "bg-accent-indigo/5" : "",
+        ].join(" ")}
+      >
+        <SortableContext
+          items={columnTasks.map((t) => t.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {columnTasks.length > 0 ? (
+            columnTasks.map((task, index) => (
+              <SortableTaskCard
+                key={task.id}
+                task={task}
+                projectName={projectNameFor(task)}
+                t={t}
+                isUpdating={updatingId === task.id}
+                onSendToHermes={onSendToHermes}
+                sendingToHermes={sendingToHermesId === task.id}
+              />
+            ))
+          ) : (
+            <p className="text-xs text-tertiary text-center py-4">
+              {t("Tasks.noTasks")}
+            </p>
+          )}
+        </SortableContext>
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Main Component
 // ──────────────────────────────────────────────
 
 export default function TasksPage() {
   const t = useTranslations();
   const params = useParams();
-  const locale =
-    (params && (params.locale as string)) || "es";
+  const locale = (params && (params.locale as string)) || "es";
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -101,6 +292,23 @@ export default function TasksPage() {
   // Per-task updating state (id -> bool) to show spinner on cards being moved
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
+  // Send to Hermes state
+  const [sendingToHermesId, setSendingToHermesId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  // Active drag state for DragOverlay
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
+
+  // ── DnD Sensors ─────────────────────────────
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   // ── Data fetching ───────────────────────────
   const loadTasks = useCallback(async () => {
     try {
@@ -111,7 +319,9 @@ export default function TasksPage() {
       setError(null);
     } catch (err) {
       console.error("Error loading tasks:", err);
-      setError("No se pudieron cargar las tareas. Revisa tu conexión e inténtalo de nuevo.");
+      setError(
+        "No se pudieron cargar las tareas. Revisa tu conexión e inténtalo de nuevo."
+      );
     }
   }, []);
 
@@ -151,14 +361,18 @@ export default function TasksPage() {
   );
 
   // ── Group tasks by column ───────────────────
-  const grouped: Record<TaskStatus, Task[]> = {
-    todo: [],
-    inProgress: [],
-    done: [],
-  };
-  for (const task of tasks) {
-    grouped[columnOf(task)].push(task);
-  }
+  const grouped = useMemo(() => {
+    const g: Record<TaskStatus, Task[]> = {
+      todo: [],
+      inProgress: [],
+      review: [],
+      done: [],
+    };
+    for (const task of tasks) {
+      g[columnOf(task)].push(task);
+    }
+    return g;
+  }, [tasks]);
 
   // ── Create task ─────────────────────────────
   async function handleCreateTask(e: React.FormEvent) {
@@ -200,6 +414,36 @@ export default function TasksPage() {
     }
   }
 
+  // ── Send task to Hermes ─────────────────────
+  async function handleSendToHermes(task: Task) {
+    setSendingToHermesId(task.id);
+    try {
+      const res = await fetch("/api/tasks/notify-hermes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          taskId: task.id,
+          taskTitle: task.title,
+          taskDescription: task.description,
+          projectName: projectNameFor(task),
+          action: "info",
+        }),
+      });
+      if (res.ok) {
+        setToast("Tarea enviada a Hermes");
+        setTimeout(() => setToast(null), 3000);
+      } else {
+        setToast("Error al enviar a Hermes");
+        setTimeout(() => setToast(null), 3000);
+      }
+    } catch {
+      setToast("Error de conexion");
+      setTimeout(() => setToast(null), 3000);
+    } finally {
+      setSendingToHermesId(null);
+    }
+  }
+
   // ── Move task between columns ───────────────
   async function moveTask(task: Task, target: TaskStatus) {
     const currentColumn = columnOf(task);
@@ -228,21 +472,86 @@ export default function TasksPage() {
       // Sync with authoritative server value if returned
       if (data.task) {
         setTasks((prev) =>
-          prev.map((tk) => (tk.id === data.task.id ? { ...tk, ...data.task } : tk))
+          prev.map((tk) =>
+            tk.id === data.task.id ? { ...tk, ...data.task } : tk
+          )
         );
       }
     } catch (err) {
       console.error("Error updating task:", err);
       // Revert on failure
       setTasks((prev) =>
-        prev.map((tk) =>
-          tk.id === task.id ? { ...tk, status: task.status } : tk
-        )
+        prev.map((tk) => (tk.id === task.id ? { ...tk, status: task.status } : tk))
       );
       setError("No se pudo mover la tarea. Inténtalo de nuevo.");
     } finally {
       setUpdatingId(null);
     }
+  }
+
+  // ── DnD Handlers ────────────────────────────
+  function handleDragStart(event: DragStartEvent) {
+    const task = tasks.find((t) => t.id === event.active.id);
+    setActiveTask(task ?? null);
+  }
+
+  function handleDragOver(event: DragOverEvent) {
+    const { active, over } = event;
+    if (!over) return;
+
+    // If hovering over a column droppable area (not a card),
+    // we handle the move on drop, not here
+    const activeColumn = columnOf(
+      tasks.find((t) => t.id === active.id) ?? { status: "" } as Task
+    );
+
+    // Check if over is a column
+    const overIsColumn = COLUMN_ORDER.includes(over.id as TaskStatus);
+    if (overIsColumn && over.id !== activeColumn) {
+      // Optimistic visual move during drag-over for smooth UX
+      setTasks((prev) =>
+        prev.map((tk) =>
+          tk.id === active.id
+            ? { ...tk, status: COLUMN_TO_DB_STATUS[over.id as TaskStatus] }
+            : tk
+        )
+      );
+    }
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    setActiveTask(null);
+
+    if (!over) return;
+
+    const activeTask = tasks.find((t) => t.id === active.id);
+    if (!activeTask) return;
+
+    // Determine target column
+    let targetColumn: TaskStatus;
+
+    if (COLUMN_ORDER.includes(over.id as TaskStatus)) {
+      // Dropped directly on a column area
+      targetColumn = over.id as TaskStatus;
+    } else {
+      // Dropped on a card — get that card's column
+      const overTask = tasks.find((t) => t.id === over.id);
+      if (!overTask) return;
+      targetColumn = columnOf(overTask);
+    }
+
+    // Call moveTask which does optimistic update + PATCH
+    // Revert the optimistic status from dragOver since moveTask will set it
+    const originalStatus = activeTask.status;
+    setTasks((prev) =>
+      prev.map((tk) =>
+        tk.id === activeTask.id ? { ...tk, status: originalStatus } : tk
+      )
+    );
+
+    // Use a microtask to ensure state settles before moveTask applies its own optimistic update
+    moveTask(activeTask, targetColumn);
   }
 
   // ── Render helpers ──────────────────────────
@@ -254,7 +563,9 @@ export default function TasksPage() {
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold text-primary">{t("Tasks.title")}</h1>
+            <h1 className="text-xl font-bold text-primary">
+              {t("Tasks.title")}
+            </h1>
             <p className="text-sm text-tertiary mt-1">{t("Tasks.subtitle")}</p>
           </div>
           <button
@@ -326,102 +637,70 @@ export default function TasksPage() {
             </button>
           </div>
         ) : (
-          /* Kanban board — 3 columnas */
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {COLUMN_ORDER.map((columnKey) => {
-              const columnTasks = grouped[columnKey];
-              return (
-                <div
+          /* Kanban board — 4 columnas with drag & drop */
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {COLUMN_ORDER.map((columnKey) => (
+                <KanbanColumn
                   key={columnKey}
-                  className="bg-card border border-app rounded-xl p-4 flex flex-col"
-                >
-                  {/* Column header */}
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold text-secondary">
-                      {t(`Tasks.${columnKey}`)}
-                    </h3>
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-hover text-tertiary">
-                      {columnTasks.length}
+                  columnKey={columnKey}
+                  columnTasks={grouped[columnKey]}
+                  projectNameFor={projectNameFor}
+                  t={t}
+                  updatingId={updatingId}
+                  onSendToHermes={handleSendToHermes}
+                  sendingToHermesId={sendingToHermesId}
+                />
+              ))}
+            </div>
+
+            {/* Drag overlay — renders the dragged card floating above */}
+            <DragOverlay dropAnimation={null}>
+              {activeTask ? (
+                <div className="bg-hover border border-accent-indigo/40 rounded-lg p-3 shadow-2xl ring-2 ring-accent-indigo/40 cursor-grabbing rotate-1">
+                  <div className="flex items-start gap-1.5">
+                    <GripVertical
+                      size={14}
+                      className="text-tertiary/40 flex-shrink-0 mt-0.5"
+                    />
+                    <p className="text-sm font-medium text-primary mb-1 flex-1">
+                      {activeTask.title}
+                    </p>
+                  </div>
+                  <p className="text-xs text-tertiary mb-2 pl-5">
+                    {projectNameFor(activeTask)}
+                  </p>
+                  <div className="pl-5">
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        priorityColors[priorityLabel(activeTask.priority)]
+                      }`}
+                    >
+                      {t(`Tasks.${priorityLabel(activeTask.priority)}`)}
                     </span>
                   </div>
-
-                  {/* Task cards */}
-                  <div className="space-y-2 flex-1">
-                    {columnTasks.length > 0 ? (
-                      columnTasks.map((task, index) => {
-                        const colIndex = COLUMN_ORDER.indexOf(columnKey);
-                        const canMoveLeft = colIndex > 0;
-                        const canMoveRight = colIndex < COLUMN_ORDER.length - 1;
-                        const pLabel = priorityLabel(task.priority);
-                        const isUpdating = updatingId === task.id;
-                        return (
-                          <div
-                            key={task.id}
-                            className="bg-hover border border-app rounded-lg p-3 transition-all animate-fade-in hover:border-accent-indigo/30"
-                            style={{ animationDelay: `${index * 50}ms` }}
-                          >
-                            <p className="text-sm font-medium text-primary mb-1">
-                              {task.title}
-                            </p>
-                            <p className="text-xs text-tertiary mb-2">
-                              {projectNameFor(task)}
-                            </p>
-                            <div className="flex items-center justify-between gap-2">
-                              <span
-                                className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                  priorityColors[pLabel]
-                                }`}
-                              >
-                                {t(`Tasks.${pLabel}`)}
-                              </span>
-                              <div className="flex items-center gap-1">
-                                <button
-                                  onClick={() =>
-                                    moveTask(task, COLUMN_ORDER[colIndex - 1])
-                                  }
-                                  disabled={!canMoveLeft || isUpdating}
-                                  className="p-1 rounded text-tertiary hover:text-primary hover:bg-app disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                                  aria-label="Mover a la izquierda"
-                                  title={`Mover a ${t(
-                                    `Tasks.${COLUMN_ORDER[colIndex - 1]}`
-                                  )}`}
-                                >
-                                  <ChevronLeft size={14} />
-                                </button>
-                                <button
-                                  onClick={() =>
-                                    moveTask(task, COLUMN_ORDER[colIndex + 1])
-                                  }
-                                  disabled={!canMoveRight || isUpdating}
-                                  className="p-1 rounded text-tertiary hover:text-primary hover:bg-app disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                                  aria-label="Mover a la derecha"
-                                  title={`Mover a ${t(
-                                    `Tasks.${COLUMN_ORDER[colIndex + 1]}`
-                                  )}`}
-                                >
-                                  {isUpdating ? (
-                                    <Loader2 size={14} className="animate-spin" />
-                                  ) : (
-                                    <ChevronRight size={14} />
-                                  )}
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <p className="text-xs text-tertiary text-center py-4">
-                        {t("Tasks.noTasks")}
-                      </p>
-                    )}
-                  </div>
                 </div>
-              );
-            })}
-          </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
         )}
       </div>
+
+      {/* ── Toast notification ────────────────── */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 animate-fade-in">
+          <div className="bg-card border border-accent-indigo/30 rounded-lg shadow-2xl px-4 py-3 flex items-center gap-2">
+            <Sparkles size={16} className="text-accent-indigo" />
+            <span className="text-sm text-primary">{toast}</span>
+          </div>
+        </div>
+      )}
 
       {/* ── Create Task Modal ─────────────────── */}
       {showModal && (

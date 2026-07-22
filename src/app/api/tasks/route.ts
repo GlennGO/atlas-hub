@@ -131,6 +131,17 @@ export async function PATCH(request: NextRequest) {
       });
     }
 
+    // Si inició una tarea (movida a in_progress), registrar actividad
+    if (status === "in_progress") {
+      await supabaseAdmin.from("activity_events").insert({
+        tenant_id: GLENNGO_TENANT_ID,
+        project_id: task.project_id,
+        type: "task_started",
+        payload: { title: task.title },
+        actor: "user:glenn",
+      });
+    }
+
     return NextResponse.json({ success: true, task });
   } catch (err) {
     return NextResponse.json(
