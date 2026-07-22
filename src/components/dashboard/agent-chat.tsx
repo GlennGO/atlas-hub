@@ -18,6 +18,18 @@ export function AgentChat({ t }: AgentChatProps) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Listen for quick action events from the agente page
+  useEffect(() => {
+    function handleQuickAction(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      if (typeof detail === "string") {
+        setInput(detail);
+      }
+    }
+    window.addEventListener("agent-quick-action", handleQuickAction);
+    return () => window.removeEventListener("agent-quick-action", handleQuickAction);
+  }, []);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
