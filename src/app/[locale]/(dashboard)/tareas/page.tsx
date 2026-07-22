@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { Plus, X, AlertCircle, Loader2, Inbox, GripVertical, Sparkles } from "lucide-react";
+import { Plus, X, AlertCircle, Loader2, Inbox, GripVertical, Sparkles, Calendar, Trash2, FileText, ChevronRight } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -16,7 +16,6 @@ import {
   closestCorners,
   type DragEndEvent,
   type DragStartEvent,
-  type DragOverEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -108,9 +107,10 @@ interface TaskCardProps {
   isUpdating: boolean;
   onSendToHermes?: (task: Task) => void;
   sendingToHermes?: boolean;
+  onTaskClick?: (task: Task) => void;
 }
 
-function SortableTaskCard({ task, projectName, t, isUpdating, onSendToHermes, sendingToHermes }: TaskCardProps) {
+function SortableTaskCard({ task, projectName, t, isUpdating, onSendToHermes, sendingToHermes, onTaskClick }: TaskCardProps) {
   const {
     attributes,
     listeners,
@@ -138,11 +138,9 @@ function SortableTaskCard({ task, projectName, t, isUpdating, onSendToHermes, se
           ? "shadow-lg ring-2 ring-accent-indigo/40 cursor-grabbing"
           : "hover:border-accent-indigo/30 cursor-grab",
       ].join(" ")}
-      {...attributes}
-      {...listeners}
     >
-      {/* Drag handle + title */}
-      <div className="flex items-start gap-1.5">
+      {/* Drag handle + title (draggable zone) */}
+      <div className="flex items-start gap-1.5" {...attributes} {...listeners}>
         <GripVertical
           size={14}
           className="text-tertiary/40 flex-shrink-0 mt-0.5 group-hover:text-tertiary transition-colors"
@@ -179,6 +177,19 @@ function SortableTaskCard({ task, projectName, t, isUpdating, onSendToHermes, se
               )}
             </button>
           )}
+          {onTaskClick && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onTaskClick(task);
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="p-1 rounded text-tertiary hover:text-accent-indigo hover:bg-app transition-colors cursor-pointer"
+              title="Ver detalles"
+            >
+              <ChevronRight size={14} />
+            </button>
+          )}
           {isUpdating && (
             <Loader2 size={12} className="animate-spin text-tertiary" />
           )}
@@ -200,6 +211,7 @@ interface KanbanColumnProps {
   updatingId: string | null;
   onSendToHermes?: (task: Task) => void;
   sendingToHermesId?: string | null;
+  onTaskClick?: (task: Task) => void;
 }
 
 function KanbanColumn({
@@ -210,6 +222,7 @@ function KanbanColumn({
   updatingId,
   onSendToHermes,
   sendingToHermesId,
+  onTaskClick,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: columnKey });
 
@@ -254,6 +267,7 @@ function KanbanColumn({
                 isUpdating={updatingId === task.id}
                 onSendToHermes={onSendToHermes}
                 sendingToHermes={sendingToHermesId === task.id}
+                onTaskClick={onTaskClick}
               />
             ))
           ) : (
@@ -296,13 +310,21 @@ export default function TasksPage() {
   const [sendingToHermesId, setSendingToHermesId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
+  // Detail modal state
+  const [detailTask, setDetailTask] = useState<Task | null>(null);
+  const [detailTitle, setDetailTitle] = useState("");
+  const [detailDescription, setDetailDescription] = useState("");
+  const [detailPriority, setDetailPriority] = useState<Priority>("medium");
+  const [detailStatus, setDetailStatus] = useState<string>("todo");
+  const [savingDetail, setSavingDetail] = useState(false);
+
   // Active drag state for DragOverlay
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
   // ── DnD Sensors ─────────────────────────────
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: 6 },
+      activationConstraint: { distance: 4 },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
@@ -489,35 +511,78 @@ export default function TasksPage() {
     }
   }
 
+  // ── Open detail modal ───────────────────────
+  function openDetail(task: Task) {
+    setDetailTask(task);
+    setDetailTitle(task.title);
+    setDetailDescription(task.description || "");
+    setDetailPriority(priorityLabel(task.priority));
+    setDetailStatus(task.status);
+  }
+
+  // ── Save detail changes ─────────────────────
+  async function saveDetail() {
+    if (!detailTask) return;
+    setSavingDetail(true);
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: detailTask.id,
+          title: detailTitle.trim(),
+          description: detailDescription.trim(),
+          priority: detailPriority,
+          status: detailStatus,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+      // Update local state
+      setTasks((prev) =>
+        prev.map((tk) =>
+          tk.id === detailTask.id ? { ...tk, ...data.task } : tk
+        )
+      );
+      setDetailTask(null);
+      setToast("Tarea actualizada");
+      setTimeout(() => setToast(null), 3000);
+    } catch (err) {
+      console.error("Error saving task:", err);
+      setToast("Error al guardar");
+      setTimeout(() => setToast(null), 3000);
+    } finally {
+      setSavingDetail(false);
+    }
+  }
+
+  // ── Delete task ─────────────────────────────
+  async function deleteTask(taskId: string) {
+    try {
+      const res = await fetch(`/api/tasks?id=${taskId}`, { method: "DELETE" });
+      if (res.ok) {
+        setTasks((prev) => prev.filter((t) => t.id !== taskId));
+        setDetailTask(null);
+        setToast("Tarea eliminada");
+        setTimeout(() => setToast(null), 3000);
+      }
+    } catch (err) {
+      console.error("Error deleting task:", err);
+      setToast("Error al eliminar");
+      setTimeout(() => setToast(null), 3000);
+    }
+  }
+
   // ── DnD Handlers ────────────────────────────
   function handleDragStart(event: DragStartEvent) {
     const task = tasks.find((t) => t.id === event.active.id);
     setActiveTask(task ?? null);
   }
 
-  function handleDragOver(event: DragOverEvent) {
-    const { active, over } = event;
-    if (!over) return;
-
-    // If hovering over a column droppable area (not a card),
-    // we handle the move on drop, not here
-    const activeColumn = columnOf(
-      tasks.find((t) => t.id === active.id) ?? { status: "" } as Task
-    );
-
-    // Check if over is a column
-    const overIsColumn = COLUMN_ORDER.includes(over.id as TaskStatus);
-    if (overIsColumn && over.id !== activeColumn) {
-      // Optimistic visual move during drag-over for smooth UX
-      setTasks((prev) =>
-        prev.map((tk) =>
-          tk.id === active.id
-            ? { ...tk, status: COLUMN_TO_DB_STATUS[over.id as TaskStatus] }
-            : tk
-        )
-      );
-    }
-  }
+  // handleDragOver removed — was causing cards to jump between columns
+  // during drag and breaking the drop detection. All logic now in handleDragEnd.
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -542,15 +607,6 @@ export default function TasksPage() {
     }
 
     // Call moveTask which does optimistic update + PATCH
-    // Revert the optimistic status from dragOver since moveTask will set it
-    const originalStatus = activeTask.status;
-    setTasks((prev) =>
-      prev.map((tk) =>
-        tk.id === activeTask.id ? { ...tk, status: originalStatus } : tk
-      )
-    );
-
-    // Use a microtask to ensure state settles before moveTask applies its own optimistic update
     moveTask(activeTask, targetColumn);
   }
 
@@ -642,7 +698,6 @@ export default function TasksPage() {
             sensors={sensors}
             collisionDetection={closestCorners}
             onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -656,6 +711,7 @@ export default function TasksPage() {
                   updatingId={updatingId}
                   onSendToHermes={handleSendToHermes}
                   sendingToHermesId={sendingToHermesId}
+                  onTaskClick={openDetail}
                 />
               ))}
             </div>
@@ -830,6 +886,157 @@ export default function TasksPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Detail/Edit Task Modal ────────────── */}
+      {detailTask && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+          onClick={() => !savingDetail && setDetailTask(null)}
+        >
+          <div
+            className="w-full max-w-lg bg-card border border-app rounded-xl shadow-2xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between p-4 border-b border-app sticky top-0 bg-card z-10">
+              <div className="flex items-center gap-2">
+                <FileText size={18} className="text-accent-indigo" />
+                <h2 className="text-base font-semibold text-primary">
+                  Detalle de tarea
+                </h2>
+              </div>
+              <button
+                onClick={() => !savingDetail && setDetailTask(null)}
+                className="text-tertiary hover:text-primary transition-colors"
+                aria-label="Cerrar"
+                disabled={savingDetail}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal body */}
+            <div className="p-5 space-y-4">
+              {/* Title */}
+              <div>
+                <label className="block text-xs font-medium text-secondary mb-1.5">
+                  Titulo
+                </label>
+                <input
+                  type="text"
+                  value={detailTitle}
+                  onChange={(e) => setDetailTitle(e.target.value)}
+                  disabled={savingDetail}
+                  className="w-full px-3 py-2 rounded-lg bg-app border border-app text-primary text-sm focus:outline-none focus:border-accent-indigo/50"
+                />
+              </div>
+
+              {/* Project (read-only) */}
+              <div>
+                <label className="block text-xs font-medium text-secondary mb-1.5">
+                  Proyecto
+                </label>
+                <div className="px-3 py-2 rounded-lg bg-hover text-sm text-secondary">
+                  {projectNameFor(detailTask)}
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-xs font-medium text-secondary mb-1.5">
+                  Descripcion
+                </label>
+                <textarea
+                  value={detailDescription}
+                  onChange={(e) => setDetailDescription(e.target.value)}
+                  disabled={savingDetail}
+                  rows={4}
+                  placeholder="Agregar descripcion o notas..."
+                  className="w-full px-3 py-2 rounded-lg bg-app border border-app text-primary text-sm placeholder:text-tertiary focus:outline-none focus:border-accent-indigo/50 resize-none"
+                />
+              </div>
+
+              {/* Status + Priority side by side */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-secondary mb-1.5">
+                    Estado
+                  </label>
+                  <select
+                    value={detailStatus}
+                    onChange={(e) => setDetailStatus(e.target.value)}
+                    disabled={savingDetail}
+                    className="w-full px-3 py-2 rounded-lg bg-app border border-app text-primary text-sm focus:outline-none focus:border-accent-indigo/50"
+                  >
+                    <option value="todo">Por hacer</option>
+                    <option value="in_progress">En progreso</option>
+                    <option value="review">En revision</option>
+                    <option value="done">Completado</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-secondary mb-1.5">
+                    Prioridad
+                  </label>
+                  <select
+                    value={detailPriority}
+                    onChange={(e) => setDetailPriority(e.target.value as Priority)}
+                    disabled={savingDetail}
+                    className="w-full px-3 py-2 rounded-lg bg-app border border-app text-primary text-sm focus:outline-none focus:border-accent-indigo/50"
+                  >
+                    <option value="low">Baja</option>
+                    <option value="medium">Media</option>
+                    <option value="high">Alta</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Meta info */}
+              {detailTask.assigned_to && (
+                <div className="flex items-center gap-2 text-xs text-tertiary">
+                  <Calendar size={12} />
+                  Asignado a: {detailTask.assigned_to}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex items-center justify-between gap-2 pt-3 border-t border-app">
+                <button
+                  onClick={() => deleteTask(detailTask.id)}
+                  disabled={savingDetail}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-error hover:bg-error/10 transition-colors disabled:opacity-50"
+                >
+                  <Trash2 size={14} />
+                  Eliminar
+                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setDetailTask(null)}
+                    disabled={savingDetail}
+                    className="px-3 py-2 rounded-lg text-sm text-secondary hover:text-primary hover:bg-hover transition-colors disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={saveDetail}
+                    disabled={savingDetail || !detailTitle.trim()}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-indigo text-white text-sm font-medium hover:bg-accent-indigo/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {savingDetail ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        Guardando...
+                      </>
+                    ) : (
+                      "Guardar cambios"
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

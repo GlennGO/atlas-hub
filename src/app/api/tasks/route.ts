@@ -150,3 +150,38 @@ export async function PATCH(request: NextRequest) {
     );
   }
 }
+
+// DELETE /api/tasks?id=xxx → eliminar tarea
+export async function DELETE(request: NextRequest) {
+  try {
+    const supabase = await createServerSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "ID requerido" }, { status: 400 });
+    }
+
+    const { error } = await supabaseAdmin
+      .from("tasks")
+      .delete()
+      .eq("id", id)
+      .eq("tenant_id", GLENNGO_TENANT_ID);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Unknown error" },
+      { status: 500 }
+    );
+  }
+}
